@@ -1,0 +1,25 @@
+# Studio 1: Data Processing
+# Prepares datasets for Cosmos-Predict2.5 LoRA post-training
+
+# Cosmos-Predict2.5 VideoDataset requirements
+video:
+  height: 720
+  fps: 16
+  min_frames: 93
+
+preprocess:
+  num_workers: 2
+
+datasets:
+  cosmos-nemo-assets:
+    repo_id: "nvidia/Cosmos-NeMo-Assets"
+    raw_dir: "data/raw/cosmos-nemo-assets"
+    processed_dir: "data/processed/cosmos-nemo-assets"
+    prompt: "A video of sks teal robot."
+
+  # Example: add more datasets by name
+  # gr1:
+  #   repo_id: "nvidia/GR1-100"
+  #   raw_dir: "data/raw/gr1"
+  #   processed_dir: "data/processed/gr1"
+  #   prompt: "A robot performing a manipulation task."
