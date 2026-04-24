@@ -12,6 +12,22 @@ Part of a multi-studio Lightning AI demo:
 | Pipelines | Orchestration and automation (CPU) |
 | Web App | Streamlit demo (GPU) |
 
+
+## Prerequisites
+
+1. Accept the [Cosmos-NeMo-Assets dataset license](https://huggingface.co/datasets/nvidia/Cosmos-NeMo-Assets) on HuggingFace
+2. Authenticate with HuggingFace:
+
+```bash
+hf auth login
+```
+
+Or set the token in your environment:
+
+```bash
+export HF_TOKEN="your_token_here"
+```
+
 ## Quick Start
 
 ```bash
