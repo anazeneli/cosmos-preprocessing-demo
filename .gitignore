@@ -1,0 +1,32 @@
+# Data (large files, not versioned)
+data/raw/
+data/processed/
+
+# Checkpoints
+checkpoints/
+
+# Cosmos repo (cloned at setup time)
+cosmos-predict2.5/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# IDE / remote servers
+.vscode/
+.vscode-server
+.cursor-server
+.windsurf-server
+.idea/
+
+# OS
+.DS_Store
+.wget-hsts
+
+# Lightning
+.lightning_studio/
+
+# Claude Code
+.claude.json
+.claude/
