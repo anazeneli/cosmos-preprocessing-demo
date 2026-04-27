@@ -50,6 +50,13 @@ Cosmos-Predict2.5 `VideoDataset` expects:
 
 No pre-computed T5 embeddings needed — Cosmos-Predict2.5 uses Qwen2.5-VL-7B as its text encoder and computes embeddings online during training.
 
+## Parallel Preprocessing
+
+Uses [LitData](https://github.com/Lightning-AI/litdata) for distributed data
+preprocessing. With 4 videos this runs in seconds. With 10,000 videos from
+50 customer sites, LitData distributes across workers (and nodes, when run on
+Lightning AI) automatically — no manual pool management.
+
 ## Adding Datasets
 
 Add a block to `config.yaml`:
@@ -69,9 +76,9 @@ Then run the same three commands with the new name.
 
 ```
 ├── config.yaml          # dataset registry + Cosmos video requirements
-├── setup_env.sh         # install pyyaml, huggingface_hub, ffmpeg
+├── setup_env.sh         # install pyyaml, huggingface_hub, litdata, ffmpeg
 └── data/
     ├── ingest.py        # download from HuggingFace
-    ├── preprocess.py    # reencode to 720p/16fps + create captions
+    ├── preprocess.py    # reencode to 720p/16fps + create captions (via LitData)
     └── validate.py      # check format against Cosmos requirements
 ```

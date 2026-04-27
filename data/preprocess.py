@@ -4,14 +4,17 @@ Cosmos VideoDataset expects:
     <dataset_dir>/
     ├── videos/*.mp4    (720p, >=93 frames)
     └── metas/*.txt     (one text caption per video, matching filename)
+
+Parallelism is handled by LitData's `map` — distributes work across workers
+(and nodes when run on Lightning AI) without manual pool management.
 """
 
 import argparse
 import shutil
 import subprocess
-from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
+import litdata as ld
 import yaml
 
 
@@ -47,24 +50,40 @@ def reencode(src: Path, dst: Path, height: int, fps: int) -> bool:
     return result.returncode == 0
 
 
-def process_one(src: Path, videos_dir: Path, metas_dir: Path,
-                height: int, fps: int, min_frames: int, prompt: str) -> str:
-    """Process a single video. Returns status string."""
+def process_video(item: dict, output_dir: str) -> None:
+    """Process a single video: re-encode to target resolution/fps, write caption.
+
+    Called by litdata.map per item. `output_dir` is the processed dataset root;
+    videos go into `{output_dir}/videos/`, captions into `{output_dir}/metas/`.
+    """
+    src = Path(item["input_path"])
+    height = item["height"]
+    fps = item["fps"]
+    min_frames = item["min_frames"]
+    prompt = item["prompt"]
+
+    out_root = Path(output_dir)
+    videos_dir = out_root / "videos"
+    metas_dir = out_root / "metas"
+    videos_dir.mkdir(parents=True, exist_ok=True)
+    metas_dir.mkdir(parents=True, exist_ok=True)
+
     dst = videos_dir / src.name
     info = get_video_info(src)
-
     needs_reencode = info["height"] != height or abs(info["fps"] - fps) > 0.5
 
     if needs_reencode:
         if not reencode(src, dst, height, fps):
-            return f"FAIL: {src.name} (reencode error)"
+            print(f"  FAIL: {src.name} (reencode error)")
+            return
     else:
         shutil.copy2(src, dst)
 
     final = get_video_info(dst)
     if final["frames"] < min_frames:
         dst.unlink()
-        return f"SKIP: {src.name} -- {final['frames']} frames (need {min_frames})"
+        print(f"  SKIP: {src.name} -- {final['frames']} frames (need {min_frames})")
+        return
 
     caption_src = src.with_suffix(".txt")
     caption_dst = metas_dir / f"{src.stem}.txt"
@@ -73,7 +92,7 @@ def process_one(src: Path, videos_dir: Path, metas_dir: Path,
     else:
         caption_dst.write_text(prompt)
 
-    return f"OK: {src.name} -> {final['width']}x{final['height']} @ {final['fps']:.0f}fps, {final['frames']}f"
+    print(f"  OK: {src.name} -> {final['width']}x{final['height']} @ {final['fps']:.0f}fps, {final['frames']}f")
 
 
 def main():
@@ -98,11 +117,6 @@ def main():
     prompt = ds.get("prompt", "A video.")
     num_workers = cfg["preprocess"]["num_workers"]
 
-    videos_dir = out_dir / "videos"
-    metas_dir = out_dir / "metas"
-    videos_dir.mkdir(parents=True, exist_ok=True)
-    metas_dir.mkdir(parents=True, exist_ok=True)
-
     raw_videos = sorted(raw_dir.rglob("*.mp4"))
     if not raw_videos:
         print(f"No .mp4 files found in {raw_dir}")
@@ -111,16 +125,28 @@ def main():
     print(f"[{args.dataset}] Processing {len(raw_videos)} videos ({height}p @ {fps}fps, min {min_frames} frames)")
     print(f"Workers: {num_workers}\n")
 
-    with ProcessPoolExecutor(max_workers=num_workers) as pool:
-        futures = {
-            pool.submit(process_one, src, videos_dir, metas_dir, height, fps, min_frames, prompt): src
-            for src in raw_videos
+    inputs = [
+        {
+            "input_path": str(p),
+            "height": height,
+            "fps": fps,
+            "min_frames": min_frames,
+            "prompt": prompt,
         }
-        for f in as_completed(futures):
-            print(f"  {f.result()}")
+        for p in raw_videos
+    ]
 
-    n_videos = len(list(videos_dir.glob("*.mp4")))
-    n_metas = len(list(metas_dir.glob("*.txt")))
+    out_dir.mkdir(parents=True, exist_ok=True)
+    ld.map(
+        fn=process_video,
+        inputs=inputs,
+        output_dir=str(out_dir),
+        input_dir=str(raw_dir),
+        num_workers=num_workers,
+    )
+
+    n_videos = len(list((out_dir / "videos").glob("*.mp4")))
+    n_metas = len(list((out_dir / "metas").glob("*.txt")))
     print(f"\nDone: {n_videos} videos, {n_metas} captions in {out_dir}")
 
 

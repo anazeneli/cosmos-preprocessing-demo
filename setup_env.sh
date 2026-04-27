@@ -4,7 +4,7 @@ set -e
 
 echo "Setting up data processing environment..."
 
-pip install --quiet pyyaml huggingface_hub
+pip install --quiet pyyaml huggingface_hub litdata
 
 # ffmpeg for video re-encoding
 if ! command -v ffmpeg &>/dev/null; then
