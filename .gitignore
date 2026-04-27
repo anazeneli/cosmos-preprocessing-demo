@@ -24,8 +24,9 @@ __pycache__/
 .DS_Store
 .wget-hsts
 
-# Lightning (logs only — hooks are tracked)
+# Lightning (logs + studio runtime state — hooks are tracked)
 .lightning_studio/logs/
+.lightning_studio/.studiorc
 
 # Claude Code
 .claude.json
