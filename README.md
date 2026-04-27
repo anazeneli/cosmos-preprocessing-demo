@@ -50,6 +50,10 @@ Cosmos-Predict2.5 `VideoDataset` expects:
 
 No pre-computed T5 embeddings needed — Cosmos-Predict2.5 uses Qwen2.5-VL-7B as its text encoder and computes embeddings online during training.
 
+## Shared Teamspace Storage
+
+Processed data is written to `/teamspace/lightning_storage/datasets/`, a writable shared mount available to every Studio in the Teamspace. The Training and Inference Studios read from this path directly — no copying needed when switching to GPU. Raw downloads stay local (`data/raw/`) since they don't need to be shared.
+
 ## Parallel Preprocessing
 
 Uses [LitData](https://github.com/Lightning-AI/litdata) for distributed data
@@ -66,7 +70,7 @@ datasets:
   my-new-dataset:
     repo_id: "org/dataset-name"
     raw_dir: "data/raw/my-new-dataset"
-    processed_dir: "data/processed/my-new-dataset"
+    processed_dir: "/teamspace/lightning_storage/datasets/my-new-dataset"
     prompt: "A video of a robot doing X."
 ```
 

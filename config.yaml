@@ -14,7 +14,7 @@ datasets:
   cosmos-nemo-assets:
     repo_id: "nvidia/Cosmos-NeMo-Assets"
     raw_dir: "data/raw/cosmos-nemo-assets"
-    processed_dir: "data/processed/cosmos-nemo-assets"
+    processed_dir: "/teamspace/lightning_storage/datasets/cosmos-nemo-assets"
     prompt: "A video of sks teal robot."
 
   # Example: add more datasets by name
