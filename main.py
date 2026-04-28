@@ -4,6 +4,7 @@ Usage:
     python data/ingest.py cosmos-nemo-assets
     python data/preprocess.py cosmos-nemo-assets
     python data/validate.py cosmos-nemo-assets
+    python tests/test_cosmos_compat.py
 """
 
 import subprocess
@@ -16,6 +17,7 @@ def main():
         ["python", "data/ingest.py", dataset],
         ["python", "data/preprocess.py", dataset],
         ["python", "data/validate.py", dataset],
+        ["python", "tests/test_cosmos_compat.py"],
     ]
     for cmd in steps:
         print(f"\n{'='*60}")
