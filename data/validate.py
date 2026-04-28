@@ -1,7 +1,7 @@
 """Validate a dataset against Cosmos-Predict2.5 VideoDataset requirements.
 
 Checks:
-  - videos/*.mp4 exist and are 720p, exactly `min_frames` frames
+  - videos/*.mp4 exist at the configured height, exactly `min_frames` frames
   - metas/*.txt exist and match each video by stem name
 """
 

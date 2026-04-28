@@ -3,9 +3,9 @@
 
 # Cosmos-Predict2.5 VideoDataset requirements
 video:
-  height: 720
+  height: 704
   fps: 16
-  min_frames: 93
+  min_frames: 100
 
 preprocess:
   num_workers: 2

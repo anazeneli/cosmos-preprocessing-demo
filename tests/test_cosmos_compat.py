@@ -19,8 +19,8 @@ def check(name, condition, detail=""):
         failed += 1
 
 DATASET_DIR = Path("/teamspace/lightning_storage/datasets/cosmos-nemo-assets")
-REQUIRED_FRAMES = 93
-REQUIRED_HEIGHT = 720
+REQUIRED_FRAMES = 100
+REQUIRED_HEIGHT = 704
 REQUIRED_FPS = 16
 
 print("\n=== Cosmos Training Compatibility Test ===\n")

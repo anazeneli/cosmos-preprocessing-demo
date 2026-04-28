@@ -2,8 +2,11 @@
 
 Cosmos VideoDataset expects:
     <dataset_dir>/
-    ├── videos/*.mp4    (720p, >=93 frames)
-    └── metas/*.txt     (one text caption per video, matching filename)
+    ├── videos/*.mp4    704p, exactly `min_frames` frames per clip
+    └── metas/*.txt     one text caption per video, matching filename
+
+Long source videos are split into consecutive `min_frames`-frame chunks so
+the loader can window-sample (it requires total_frames > sequence_length).
 
 Parallelism is handled by LitData's `map` — distributes work across workers
 (and nodes when run on Lightning AI) without manual pool management.
