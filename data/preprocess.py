@@ -153,13 +153,23 @@ def main():
     ]
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    ld.map(
-        fn=process_video,
-        inputs=inputs,
-        output_dir=str(out_dir),
-        input_dir=str(raw_dir),
-        num_workers=num_workers,
-    )
+    try:
+        ld.map(
+            fn=process_video,
+            inputs=inputs,
+            output_dir=str(out_dir),
+            input_dir=str(raw_dir),
+            num_workers=num_workers,
+        )
+    except Exception as e:
+        # litdata's post-run _create_dataset registers a Lightning Cloud Dataset
+        # entity, which 400s when ld.map produces files (not optimized chunks).
+        # Files are already written by this point — safe to skip the registration.
+        msg = str(e)
+        if "numChunks" in msg or "400" in msg:
+            print(f"Note: litdata cloud registration skipped ({type(e).__name__})")
+        else:
+            raise
 
     n_videos = len(list((out_dir / "videos").glob("*.mp4")))
     n_metas = len(list((out_dir / "metas").glob("*.txt")))
