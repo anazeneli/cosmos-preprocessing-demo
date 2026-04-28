@@ -2,11 +2,11 @@
 
 Cosmos VideoDataset expects:
     <dataset_dir>/
-    ├── videos/*.mp4    704p, exactly `min_frames` frames per clip
+    ├── videos/*.mp4    target height + fps, at least `min_frames` frames
     └── metas/*.txt     one text caption per video, matching filename
 
-Long source videos are split into consecutive `min_frames`-frame chunks so
-the loader can window-sample (it requires total_frames > sequence_length).
+The loader window-samples a fixed-length clip per __getitem__, so videos are
+kept at their original length (>= min_frames) — no chunking.
 
 Parallelism is handled by LitData's `map` — distributes work across workers
 (and nodes when run on Lightning AI) without manual pool management.
@@ -14,7 +14,6 @@ Parallelism is handled by LitData's `map` — distributes work across workers
 
 import argparse
 import subprocess
-import tempfile
 from pathlib import Path
 
 import litdata as ld
@@ -52,28 +51,18 @@ def reencode(src: Path, dst: Path, height: int, fps: int) -> bool:
     return subprocess.run(cmd, capture_output=True, text=True).returncode == 0
 
 
-def extract_chunk(src: Path, dst: Path, start: int, end: int) -> bool:
-    """Extract frames [start, end] inclusive into dst."""
-    cmd = [
-        "ffmpeg", "-y", "-i", str(src),
-        "-vf", f"select='between(n\\,{start}\\,{end})',setpts=N/FR/TB",
-        "-frames:v", str(end - start + 1),
-        "-c:v", "libx264", "-preset", "fast", "-an",
-        str(dst),
-    ]
-    return subprocess.run(cmd, capture_output=True, text=True).returncode == 0
-
-
 def process_video(item: dict, output_dir: str) -> None:
-    """Re-encode then split into consecutive `chunk_frames`-frame clips.
+    """Re-encode source to target height + fps; skip if too few frames.
 
-    Each chunk inherits the source video's caption. Tail frames below
-    `chunk_frames` are discarded.
+    The Cosmos VideoDataset window-samples a fixed-length clip per
+    __getitem__, so we keep originals at native length and only filter
+    out anything below `min_frames` (otherwise the loader's randint(0, N-93)
+    crashes).
     """
     src = Path(item["input_path"])
     height = item["height"]
     fps = item["fps"]
-    chunk_frames = item["min_frames"]
+    min_frames = item["min_frames"]
     prompt = item["prompt"]
 
     out_root = Path(output_dir)
@@ -82,36 +71,22 @@ def process_video(item: dict, output_dir: str) -> None:
     videos_dir.mkdir(parents=True, exist_ok=True)
     metas_dir.mkdir(parents=True, exist_ok=True)
 
+    dst = videos_dir / src.name
+    if not reencode(src, dst, height, fps):
+        print(f"  FAIL: {src.name} (reencode error)")
+        return
+
+    info = get_video_info(dst)
+    if info["frames"] < min_frames:
+        dst.unlink()
+        print(f"  SKIP: {src.name} -- {info['frames']} frames (need >= {min_frames})")
+        return
+
     caption_src = src.with_suffix(".txt")
     caption_text = caption_src.read_text() if caption_src.exists() else prompt
+    (metas_dir / f"{src.stem}.txt").write_text(caption_text)
 
-    with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tf:
-        tmp = Path(tf.name)
-    try:
-        if not reencode(src, tmp, height, fps):
-            print(f"  FAIL: {src.name} (reencode error)")
-            return
-
-        info = get_video_info(tmp)
-        n_chunks = info["frames"] // chunk_frames
-        if n_chunks == 0:
-            print(f"  SKIP: {src.name} -- {info['frames']} frames (need {chunk_frames})")
-            return
-
-        for i in range(n_chunks):
-            start = i * chunk_frames
-            end = start + chunk_frames - 1
-            stem = f"{src.stem}_chunk{i:03d}"
-            chunk_path = videos_dir / f"{stem}.mp4"
-            if not extract_chunk(tmp, chunk_path, start, end):
-                print(f"  FAIL: {stem} (chunk extract error)")
-                continue
-            (metas_dir / f"{stem}.txt").write_text(caption_text)
-
-        print(f"  OK: {src.name} -> {n_chunks} chunks ({info['frames']} frames, {info['width']}x{info['height']} @ {info['fps']:.0f}fps)")
-    finally:
-        if tmp.exists():
-            tmp.unlink()
+    print(f"  OK: {src.name} -> {info['width']}x{info['height']} @ {info['fps']:.0f}fps, {info['frames']}f")
 
 
 def main():

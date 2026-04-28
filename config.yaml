@@ -5,7 +5,7 @@
 video:
   height: 704
   fps: 16
-  min_frames: 100
+  min_frames: 94
 
 preprocess:
   num_workers: 2

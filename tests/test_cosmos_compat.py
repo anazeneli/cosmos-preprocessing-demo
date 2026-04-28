@@ -19,7 +19,7 @@ def check(name, condition, detail=""):
         failed += 1
 
 DATASET_DIR = Path("/teamspace/lightning_storage/datasets/cosmos-nemo-assets")
-REQUIRED_FRAMES = 100
+MIN_FRAMES = 94
 REQUIRED_HEIGHT = 704
 REQUIRED_FPS = 16
 
@@ -49,8 +49,8 @@ check("All videos have captions", len(unmatched_videos) == 0,
 check("All captions have videos", len(unmatched_metas) == 0,
       f"Orphan captions: {unmatched_metas}")
 
-# 4. Every video has exactly REQUIRED_FRAMES frames at REQUIRED_HEIGHT and REQUIRED_FPS
-print(f"\n[Video Format — expecting {REQUIRED_FRAMES} frames, {REQUIRED_HEIGHT}p, {REQUIRED_FPS}fps]")
+# 4. Every video meets the minimum frame count at REQUIRED_HEIGHT and REQUIRED_FPS
+print(f"\n[Video Format — expecting >={MIN_FRAMES} frames, {REQUIRED_HEIGHT}p, {REQUIRED_FPS}fps]")
 for video in videos:
     cmd = [
         "ffprobe", "-v", "error", "-select_streams", "v:0",
@@ -66,10 +66,10 @@ for video in videos:
         fps = round(num / denom)
         frames = int(parts[3])
 
-        ok = frames == REQUIRED_FRAMES and h == REQUIRED_HEIGHT and fps == REQUIRED_FPS
+        ok = frames >= MIN_FRAMES and h == REQUIRED_HEIGHT and fps == REQUIRED_FPS
         detail = f"{w}x{h}, {fps}fps, {frames}f"
         if not ok:
-            detail += f" — EXPECTED {REQUIRED_FRAMES}f, {REQUIRED_HEIGHT}p, {REQUIRED_FPS}fps"
+            detail += f" — EXPECTED >={MIN_FRAMES}f, {REQUIRED_HEIGHT}p, {REQUIRED_FPS}fps"
         check(f"{video.name}: {detail}", ok)
     except Exception as e:
         check(f"{video.name}", False, str(e))
