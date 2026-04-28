@@ -10,8 +10,8 @@ Parallelism is handled by LitData's `map` — distributes work across workers
 """
 
 import argparse
-import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 
 import litdata as ld
@@ -46,20 +46,31 @@ def reencode(src: Path, dst: Path, height: int, fps: int) -> bool:
         "-c:v", "libx264", "-preset", "fast", "-an",
         str(dst),
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    return result.returncode == 0
+    return subprocess.run(cmd, capture_output=True, text=True).returncode == 0
+
+
+def extract_chunk(src: Path, dst: Path, start: int, end: int) -> bool:
+    """Extract frames [start, end] inclusive into dst."""
+    cmd = [
+        "ffmpeg", "-y", "-i", str(src),
+        "-vf", f"select='between(n\\,{start}\\,{end})',setpts=N/FR/TB",
+        "-frames:v", str(end - start + 1),
+        "-c:v", "libx264", "-preset", "fast", "-an",
+        str(dst),
+    ]
+    return subprocess.run(cmd, capture_output=True, text=True).returncode == 0
 
 
 def process_video(item: dict, output_dir: str) -> None:
-    """Process a single video: re-encode to target resolution/fps, write caption.
+    """Re-encode then split into consecutive `chunk_frames`-frame clips.
 
-    Called by litdata.map per item. `output_dir` is the processed dataset root;
-    videos go into `{output_dir}/videos/`, captions into `{output_dir}/metas/`.
+    Each chunk inherits the source video's caption. Tail frames below
+    `chunk_frames` are discarded.
     """
     src = Path(item["input_path"])
     height = item["height"]
     fps = item["fps"]
-    min_frames = item["min_frames"]
+    chunk_frames = item["min_frames"]
     prompt = item["prompt"]
 
     out_root = Path(output_dir)
@@ -68,31 +79,36 @@ def process_video(item: dict, output_dir: str) -> None:
     videos_dir.mkdir(parents=True, exist_ok=True)
     metas_dir.mkdir(parents=True, exist_ok=True)
 
-    dst = videos_dir / src.name
-    info = get_video_info(src)
-    needs_reencode = info["height"] != height or abs(info["fps"] - fps) > 0.5
+    caption_src = src.with_suffix(".txt")
+    caption_text = caption_src.read_text() if caption_src.exists() else prompt
 
-    if needs_reencode:
-        if not reencode(src, dst, height, fps):
+    with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tf:
+        tmp = Path(tf.name)
+    try:
+        if not reencode(src, tmp, height, fps):
             print(f"  FAIL: {src.name} (reencode error)")
             return
-    else:
-        shutil.copy2(src, dst)
 
-    final = get_video_info(dst)
-    if final["frames"] < min_frames:
-        dst.unlink()
-        print(f"  SKIP: {src.name} -- {final['frames']} frames (need {min_frames})")
-        return
+        info = get_video_info(tmp)
+        n_chunks = info["frames"] // chunk_frames
+        if n_chunks == 0:
+            print(f"  SKIP: {src.name} -- {info['frames']} frames (need {chunk_frames})")
+            return
 
-    caption_src = src.with_suffix(".txt")
-    caption_dst = metas_dir / f"{src.stem}.txt"
-    if caption_src.exists():
-        shutil.copy2(caption_src, caption_dst)
-    else:
-        caption_dst.write_text(prompt)
+        for i in range(n_chunks):
+            start = i * chunk_frames
+            end = start + chunk_frames - 1
+            stem = f"{src.stem}_chunk{i:03d}"
+            chunk_path = videos_dir / f"{stem}.mp4"
+            if not extract_chunk(tmp, chunk_path, start, end):
+                print(f"  FAIL: {stem} (chunk extract error)")
+                continue
+            (metas_dir / f"{stem}.txt").write_text(caption_text)
 
-    print(f"  OK: {src.name} -> {final['width']}x{final['height']} @ {final['fps']:.0f}fps, {final['frames']}f")
+        print(f"  OK: {src.name} -> {n_chunks} chunks ({info['frames']} frames, {info['width']}x{info['height']} @ {info['fps']:.0f}fps)")
+    finally:
+        if tmp.exists():
+            tmp.unlink()
 
 
 def main():

@@ -1,7 +1,7 @@
 """Validate a dataset against Cosmos-Predict2.5 VideoDataset requirements.
 
 Checks:
-  - videos/*.mp4 exist and are 720p, >=93 frames
+  - videos/*.mp4 exist and are 720p, exactly `min_frames` frames
   - metas/*.txt exist and match each video by stem name
 """
 
@@ -77,8 +77,8 @@ def main():
         issues = []
         if info["height"] != expected_height:
             issues.append(f"height={info['height']} (want {expected_height})")
-        if info["frames"] < min_frames:
-            issues.append(f"frames={info['frames']} (need >={min_frames})")
+        if info["frames"] != min_frames:
+            issues.append(f"frames={info['frames']} (need =={min_frames})")
         if info["width"] == 0:
             issues.append("ffprobe failed")
 
