@@ -13,9 +13,16 @@ Part of a multi-studio Lightning AI demo:
 | Web App | Streamlit demo (GPU) |
 
 
+## Datasets
+
+| Name | Repo | Role | Videos |
+|------|------|------|--------|
+| `cosmos-nemo-assets` | [`nvidia/Cosmos-NeMo-Assets`](https://huggingface.co/datasets/nvidia/Cosmos-NeMo-Assets) | training (sks teal robot) | 4 |
+| `gr1-100` | [`nvidia/PhysicalAI-Robotics-GR00T-GR1`](https://huggingface.co/datasets/nvidia/PhysicalAI-Robotics-GR00T-GR1) | validation (Fourier GR1-T2 humanoid) | 92 |
+
 ## Prerequisites
 
-1. Accept the [Cosmos-NeMo-Assets dataset license](https://huggingface.co/datasets/nvidia/Cosmos-NeMo-Assets) on HuggingFace
+1. Accept the [Cosmos-NeMo-Assets dataset license](https://huggingface.co/datasets/nvidia/Cosmos-NeMo-Assets) on HuggingFace (GR1-100 is CC-BY-4.0, no acceptance needed)
 2. Authenticate with HuggingFace:
 
 ```bash
@@ -33,9 +40,22 @@ export HF_TOKEN="your_token_here"
 ```bash
 bash setup_env.sh
 
+# Training set
 python data/ingest.py cosmos-nemo-assets
 python data/preprocess.py cosmos-nemo-assets
 python data/validate.py cosmos-nemo-assets
+
+# Validation set
+python data/ingest.py gr1-100
+python data/preprocess.py gr1-100
+python data/validate.py gr1-100
+```
+
+Or run the full pipeline (ingest → preprocess → validate → cosmos-compat test) for one dataset:
+
+```bash
+python main.py cosmos-nemo-assets
+python main.py gr1-100
 ```
 
 ## Output Format
@@ -63,7 +83,7 @@ Lightning AI) automatically — no manual pool management.
 
 ## Adding Datasets
 
-Add a block to `config.yaml`:
+Add a block to `config.yaml` — no code changes needed:
 
 ```yaml
 datasets:
@@ -74,7 +94,9 @@ datasets:
     prompt: "A video of a robot doing X."
 ```
 
-Then run the same three commands with the new name.
+Then run the same commands with the new name. `preprocess.py` recursively
+finds `*.mp4` under `raw_dir`, so subdirectory layouts (e.g. `gr1/*.mp4`)
+work without changes.
 
 ## What's Here
 

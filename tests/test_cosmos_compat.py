@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
 """Test that processed data is compatible with Cosmos-Predict2.5 VideoDataset.
 Run BEFORE switching to GPU to avoid wasting credits on bad data.
+
+Usage:
+    python tests/test_cosmos_compat.py [dataset]
+
+`dataset` is a name from config.yaml (default: cosmos-nemo-assets).
 """
 import sys
 import subprocess
 from pathlib import Path
+
+import yaml
 
 passed = 0
 failed = 0
@@ -18,10 +25,18 @@ def check(name, condition, detail=""):
         print(f"  ❌ {name} — {detail}")
         failed += 1
 
-DATASET_DIR = Path("/teamspace/lightning_storage/datasets/cosmos-nemo-assets")
-MIN_FRAMES = 94
-REQUIRED_HEIGHT = 704
-REQUIRED_FPS = 16
+dataset_name = sys.argv[1] if len(sys.argv) > 1 else "cosmos-nemo-assets"
+cfg = yaml.safe_load(Path("config.yaml").read_text())
+if dataset_name not in cfg["datasets"]:
+    print(f"Unknown dataset '{dataset_name}'. Available: {', '.join(cfg['datasets'])}")
+    sys.exit(2)
+
+DATASET_DIR = Path(cfg["datasets"][dataset_name]["processed_dir"])
+MIN_FRAMES = cfg["video"]["min_frames"]
+REQUIRED_HEIGHT = cfg["video"]["height"]
+REQUIRED_FPS = cfg["video"]["fps"]
+
+print(f"Dataset: {dataset_name} ({DATASET_DIR})")
 
 print("\n=== Cosmos Training Compatibility Test ===\n")
 

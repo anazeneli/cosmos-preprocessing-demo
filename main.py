@@ -17,7 +17,7 @@ def main():
         ["python", "data/ingest.py", dataset],
         ["python", "data/preprocess.py", dataset],
         ["python", "data/validate.py", dataset],
-        ["python", "tests/test_cosmos_compat.py"],
+        ["python", "tests/test_cosmos_compat.py", dataset],
     ]
     for cmd in steps:
         print(f"\n{'='*60}")

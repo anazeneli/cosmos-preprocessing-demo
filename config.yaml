@@ -17,9 +17,8 @@ datasets:
     processed_dir: "/teamspace/lightning_storage/datasets/cosmos-nemo-assets"
     prompt: "A video of sks teal robot."
 
-  # Example: add more datasets by name
-  # gr1:
-  #   repo_id: "nvidia/GR1-100"
-  #   raw_dir: "data/raw/gr1"
-  #   processed_dir: "data/processed/gr1"
-  #   prompt: "A robot performing a manipulation task."
+  gr1-100:
+    repo_id: "nvidia/PhysicalAI-Robotics-GR00T-GR1"
+    raw_dir: "data/raw/gr1-100"
+    processed_dir: "/teamspace/lightning_storage/datasets/gr1-100"
+    prompt: "A video of a humanoid robot performing manipulation tasks."
